@@ -3,7 +3,7 @@
 <script setup lang="ts">
 import { watchEffect } from "vue";
 import { declareModule } from "@/composable/useModule";
-import { declareConfig } from "@/composable/useSettings";
+import { declareConfig, useConfig } from "@/composable/useSettings";
 import { hiddenElementSettings } from "./hiddenElements";
 
 const { markAsReady } = declareModule("hidden-elements", {
@@ -11,11 +11,28 @@ const { markAsReady } = declareModule("hidden-elements", {
 	depends_on: [],
 });
 
+const shouldHideFeaturedStreams = useConfig<boolean>("layout.hide_featured_streams");
+
 watchEffect(() => {
 	hiddenElementSettings.forEach((setting) => {
 		document.body.classList.toggle(setting.class, setting.isHidden.value);
 	});
+
+	if (!shouldHideFeaturedStreams || !shouldHideFeaturedStreams.value) return;
+	hideFeaturedStreams();
 });
+
+// TODO: There still is a problem when going back to the main page, where the featured video starts to play
+// Example: Go to your profile settings -> then go back to main page -> featured streams are hidden but video starts to play
+// because watchEffect only executes when App is loaded
+function hideFeaturedStreams() {
+	// This video selector might be improvable?
+	let videoContainer = document.getElementsByClassName("featured-content-carousel__wrapper")[0];
+	let video = videoContainer.querySelector("video");
+
+	if (!video || video.paused) return;
+	video.pause();
+}
 
 markAsReady();
 </script>
@@ -137,6 +154,13 @@ export const config = [
 		hint: "If checked, the player extensions will be hidden",
 		defaultValue: false,
 	}),
+	// Front page
+	declareConfig("layout.hide_featured_streams", "TOGGLE", {
+		path: ["Site Layout", "Frontpage"],
+		label: "Hide Featured Streams",
+		hint: "If checked, the featured streams on the frontpage will be hidden",
+		defaultValue: false,
+	}),
 ];
 </script>
 
@@ -230,6 +254,12 @@ export const config = [
 
 .seventv-hide-live-notification-button {
 	button[data-a-target="notifications-toggle"] {
+		display: none !important;
+	}
+}
+
+.seventv-hide-featured-streams-carousel {
+	div[data-a-target="front-page-carousel"] {
 		display: none !important;
 	}
 }
